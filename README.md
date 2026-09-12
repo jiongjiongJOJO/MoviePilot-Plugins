@@ -25,3 +25,12 @@ python -m compileall plugins.v3/tangredpacketclaim tests/v3/tangredpacketclaim
 python -m pytest tests/v3/tangredpacketclaim
 git diff --check
 ```
+
+## CI 与发布
+
+- `.github/workflows/plugin-gate.yml`：在 Pull Request、推送到 `master` 和手动运行时执行版本门禁、Python 编译、测试和空白检查。
+- `.github/workflows/release.yml`：在 `package.v3.json` 或 V3 插件源码变化并合并到 `master` 后，根据索引中 `release: true` 的条目创建 GitHub Release。
+- Release 标签格式为 `<插件ID>_v<版本>`，例如 `TangRedPacketClaim_v0.0.1`。
+- 发布压缩包格式为 `<插件目录>_v<版本>.zip`，例如 `tangredpacketclaim_v0.0.1.zip`。
+
+GitHub Actions 默认使用仓库内置的 `GITHUB_TOKEN`，仓库设置需要允许 Actions 创建和写入 Releases。

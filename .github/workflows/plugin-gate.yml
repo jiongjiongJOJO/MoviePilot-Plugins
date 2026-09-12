@@ -1,0 +1,39 @@
+name: Plugin Gate
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: Plugin checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Check plugin versions
+        run: python .github/scripts/check_plugin_versions.py
+
+      - name: Install test dependencies
+        run: python -m pip install --disable-pip-version-check pytest apscheduler
+
+      - name: Compile Python sources
+        run: python -m compileall -q plugins.v3 tests/v3
+
+      - name: Run tests
+        run: python -m pytest tests/v3
+
+      - name: Check whitespace
+        run: git diff --check
