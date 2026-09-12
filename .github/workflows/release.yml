@@ -1,0 +1,58 @@
+name: Plugin Release
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - package.v3.json
+      - plugins.v3/**
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and release plugins
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Check plugin versions
+        run: python .github/scripts/check_plugin_versions.py
+
+      - name: Install packaging tools
+        run: sudo apt-get update && sudo apt-get install --yes jq zip
+
+      - name: Package and publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          while IFS='|' read -r plugin_id version; do
+            plugin_id_lc="$(printf '%s' "$plugin_id" | tr '[:upper:]' '[:lower:]')"
+            plugin_dir="$(bash .github/scripts/select_plugin_release_dir.sh package.v3.json "$plugin_id_lc")"
+            test -n "$plugin_dir"
+            test -d "$plugin_dir"
+            tag="${plugin_id}_v${version}"
+            asset="${plugin_id_lc}_v${version}.zip"
+            notes="$(jq -r --arg id "$plugin_id" --arg version "v${version}" '.[$id].history[$version] // empty' package.v3.json)"
+            test -n "$notes" || notes="Automated release of ${plugin_id} ${version}"
+
+            rm -f "$asset"
+            (cd "$(dirname "$plugin_dir")" && zip -r "$GITHUB_WORKSPACE/$asset" "$(basename "$plugin_dir")" -x '*/__pycache__/*' -x '*.pyc')
+
+            if gh release view "$tag" >/dev/null 2>&1; then
+              gh release delete "$tag" --yes
+              git push origin ":refs/tags/$tag" || true
+            fi
+            gh release create "$tag" "$asset" --title "$tag" --notes "$notes" --target "$GITHUB_SHA"
+          done < <(jq -r 'to_entries[] | select(.value.release == true) | "\(.key)|\(.value.version)"' package.v3.json)
