@@ -1,0 +1,16 @@
+{
+  "TangRedPacketClaim": {
+    "name": "不可躺自动抢红包插件",
+    "description": "自动在不可躺站点抢当前红包列表的所有红包，支持定时和立即执行。",
+    "labels": "站点,自动化,红包",
+    "version": "0.0.1",
+    "icon": "tangredpacketclaim.png",
+    "author": "jiongjiongJOJO",
+    "level": 1,
+    "release": true,
+    "v3": false,
+    "history": {
+      "v0.0.1": "V2 版本：支持定时和立即执行，并通过多轮刷新领取不可躺站点红包。"
+    }
+  }
+}

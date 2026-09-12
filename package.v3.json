@@ -3,7 +3,7 @@
     "name": "不可躺自动抢红包插件",
     "description": "自动在不可躺站点抢当前红包列表的所有红包，支持定时和立即执行。",
     "labels": "站点,自动化,红包",
-    "version": "0.0.1",
+    "version": "1.0.0",
     "icon": "tangredpacketclaim.png",
     "author": "jiongjiongJOJO",
     "author_url": "https://github.com/jiongjiongJOJO",
@@ -11,6 +11,7 @@
     "release": true,
     "system_version": ">=3.0.0",
     "history": {
+      "v1.0.0": "V3 独立版本：修复 V3 插件生命周期接口，支持定时和立即执行，并通过多轮刷新领取不可躺站点红包。",
       "v0.0.1": "首个版本，支持定时和立即执行，并通过多轮刷新领取不可躺站点红包。"
     }
   }

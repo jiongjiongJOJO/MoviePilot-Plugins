@@ -61,6 +61,12 @@ def test_cookie_to_dict() -> None:
     }
 
 
+def test_v3_required_lifecycle_api_is_present() -> None:
+    """V3 插件必须实现基类要求的 get_api 方法，避免抽象类实例化失败。"""
+    assert hasattr(TangRedPacketClaim, "get_api")
+    assert not hasattr(TangRedPacketClaim, "get_apiget_api")
+
+
 def test_get_site_cookie_supports_root_domain_and_missing_site() -> None:
     """站点保存为根域名时也应读取成功，空对象不能触发属性异常。"""
     site_oper = sys.modules["app.db.oper.site"].SiteOper
