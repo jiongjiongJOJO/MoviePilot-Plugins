@@ -4,7 +4,7 @@
     "description": "自动在不可躺站点抢当前红包列表的所有红包，支持定时和立即执行。",
     "labels": "站点,自动化,红包",
     "version": "0.0.1",
-    "icon": "tangredpacketclaim.png",
+    "icon": "https://raw.githubusercontent.com/jiongjiongJOJO/MoviePilot-Plugins/refs/heads/main/icons/tangredpacketclaim.png",
     "author": "jiongjiongJOJO",
     "level": 1,
     "release": true,

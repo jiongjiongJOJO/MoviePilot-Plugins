@@ -18,7 +18,7 @@ class TangRedPacketClaim(_PluginBase):
 
     plugin_name = "不可躺自动抢红包插件"
     plugin_desc = "自动在不可躺站点抢当前红包列表的所有红包，支持定时和立即执行。"
-    plugin_icon = "tangredpacketclaim.png"
+    plugin_icon = "https://raw.githubusercontent.com/jiongjiongJOJO/MoviePilot-Plugins/refs/heads/main/icons/tangredpacketclaim.png"
     plugin_version = "0.0.1"
     plugin_author = "jiongjiongJOJO"
     author_url = "https://github.com/jiongjiongJOJO"
@@ -143,11 +143,11 @@ class TangRedPacketClaim(_PluginBase):
             else:
                 result = self.__claim_all(cookie)
             self._last_result = result
-            if self._notify:
+            if self._notify and result.get("claimed", 0) > 0:
                 self.post_message(
                     mtype=NotificationType.Plugin,
                     title="【不可躺自动抢红包】",
-                    text="状态：{}\n消息：{}".format(result["status"], result["message"]),
+                    text=result["message"],
                 )
             return result
         finally:
@@ -204,7 +204,12 @@ class TangRedPacketClaim(_PluginBase):
                 claimed += 1
                 magic_total += amount
                 user_bonus_after = result.get("user_bonus_after", user_bonus_after)
-                logger.info("红包 {} 领取成功：本次获得 {} 魔力值，领取后魔力值 {}".format(packet_id, amount, user_bonus_after if user_bonus_after is not None else "未知"))
+                logger.info("红包 {} 领取成功：本次获得 {} 魔力值{}".format(
+                    packet_id,
+                    amount,
+                    "，领取后魔力值 {}".format(user_bonus_after)
+                    if user_bonus_after is not None else "",
+                ))
                 time.sleep(self.CLAIM_DELAY_SECONDS)
         return self.__result("completed", "达到刷新轮数上限", claimed, magic_total, user_bonus_after)
 
@@ -213,7 +218,11 @@ class TangRedPacketClaim(_PluginBase):
         """构造包含魔力统计的任务结果。"""
         return {
             "status": status,
-            "message": "{}，本轮获得魔力值 {}，领取后魔力值 {}".format(message, magic_total, balance if balance is not None else "未知"),
+            "message": "{}，本轮获得魔力值 {}{}".format(
+                message,
+                magic_total,
+                "，领取后魔力值 {}".format(balance) if balance is not None else "",
+            ),
             "claimed": claimed,
             "magic_total": magic_total,
             "user_bonus_after": balance,

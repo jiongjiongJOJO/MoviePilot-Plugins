@@ -20,7 +20,7 @@ class TangRedPacketClaim(_PluginBase):
 
     plugin_name = "不可躺自动抢红包插件"
     plugin_desc = "自动在不可躺站点抢当前红包列表的所有红包，支持定时和立即执行。"
-    plugin_icon = "tangredpacketclaim.png"
+    plugin_icon = "https://raw.githubusercontent.com/jiongjiongJOJO/MoviePilot-Plugins/refs/heads/main/icons/tangredpacketclaim.png"
     plugin_version = "1.0.0"
     plugin_author = "jiongjiongJOJO"
     author_url = "https://github.com/jiongjiongJOJO"
@@ -148,11 +148,11 @@ class TangRedPacketClaim(_PluginBase):
             else:
                 result = self._claim_all(cookie)
             self._last_result = result
-            if self._notify:
+            if self._notify and result.get("claimed", 0) > 0:
                 self.post_message(
                     mtype=NotificationType.Plugin,
                     title="【不可躺自动抢红包】",
-                    text=f"状态：{result['status']}\n消息：{result['message']}",
+                    text=result["message"],
                 )
             return result
         finally:
@@ -208,8 +208,11 @@ class TangRedPacketClaim(_PluginBase):
                 magic_total += magic_amount
                 user_bonus_after = result.get("user_bonus_after", user_bonus_after)
                 logger.info(
-                    f"红包 {packet_id} 领取成功：本次获得 {magic_amount} 魔力值，"
-                    f"领取后魔力值 {user_bonus_after if user_bonus_after is not None else '未知'}"
+                    f"红包 {packet_id} 领取成功：本次获得 {magic_amount} 魔力值"
+                    + (
+                        f"，领取后魔力值 {user_bonus_after}"
+                        if user_bonus_after is not None else ""
+                    )
                 )
                 time.sleep(self.CLAIM_DELAY_SECONDS)
         return self._build_result(
@@ -225,12 +228,14 @@ class TangRedPacketClaim(_PluginBase):
         user_bonus_after: Any,
     ) -> dict[str, Any]:
         """构造任务结果，统一输出红包数量、总魔力值和领取后余额。"""
-        balance = user_bonus_after if user_bonus_after is not None else "未知"
+        balance_message = (
+            f"，领取后魔力值 {user_bonus_after}"
+            if user_bonus_after is not None else ""
+        )
         return {
             "status": status,
             "message": (
-                f"{message}，本轮获得魔力值 {magic_total}，"
-                f"领取后魔力值 {balance}"
+                f"{message}，本轮获得魔力值 {magic_total}{balance_message}"
             ),
             "claimed": claimed,
             "magic_total": magic_total,

@@ -67,6 +67,44 @@ def test_v3_required_lifecycle_api_is_present() -> None:
     assert not hasattr(TangRedPacketClaim, "get_apiget_api")
 
 
+def test_empty_claim_result_does_not_trigger_notification() -> None:
+    """定时任务没有成功领取红包时不应发送频繁通知。"""
+    plugin = make_plugin()
+    plugin._notify = True
+    plugin.post_message = MagicMock()
+
+    with patch.object(plugin, "_get_site_cookie", return_value="c_secure_pass=token"), patch.object(
+        plugin, "_claim_all", return_value={"status": "completed", "message": "没有可领取红包", "claimed": 0}
+    ):
+        result = plugin.run_red_packet_task()
+
+    assert result["claimed"] == 0
+    plugin.post_message.assert_not_called()
+
+
+def test_successful_claim_result_triggers_notification() -> None:
+    """至少成功领取一个红包时仍应发送任务结果通知。"""
+    plugin = make_plugin()
+    plugin._notify = True
+    plugin.post_message = MagicMock()
+
+    with patch.object(plugin, "_get_site_cookie", return_value="c_secure_pass=token"), patch.object(
+        plugin, "_claim_all", return_value={"status": "completed", "message": "成功", "claimed": 1}
+    ):
+        plugin.run_red_packet_task()
+
+    plugin.post_message.assert_called_once()
+    assert plugin.post_message.call_args.kwargs["text"] == "成功"
+
+
+def test_result_omits_unknown_balance() -> None:
+    """接口没有返回余额时，通知正文不应出现未知余额。"""
+    result = TangRedPacketClaim._build_result("completed", "任务完成", 1, 44, None)
+
+    assert result["message"] == "任务完成，本轮获得魔力值 44"
+    assert "未知" not in result["message"]
+
+
 def test_get_site_cookie_supports_root_domain_and_missing_site() -> None:
     """站点保存为根域名时也应读取成功，空对象不能触发属性异常。"""
     site_oper = sys.modules["app.db.oper.site"].SiteOper
