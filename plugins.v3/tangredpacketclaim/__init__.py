@@ -20,7 +20,7 @@ class TangRedPacketClaim(_PluginBase):
 
     plugin_name = "不可躺自动抢红包插件"
     plugin_desc = "自动在不可躺站点抢当前红包列表的所有红包，支持定时和立即执行。"
-    plugin_icon = "Moviepilot_A.png"
+    plugin_icon = "tangredpacketclaim.png"
     plugin_version = "0.0.1"
     plugin_author = "jiongjiongJOJO"
     author_url = "https://github.com/jiongjiongJOJO"
@@ -68,7 +68,7 @@ class TangRedPacketClaim(_PluginBase):
         """不注册远程命令，立即执行通过配置开关触发。"""
         return []
 
-    def get_api(self) -> list[dict[str, Any]]:
+    def get_apiget_api(self) -> list[dict[str, Any]]:
         """不暴露额外 API，避免增加不必要的执行入口。"""
         return []
 
