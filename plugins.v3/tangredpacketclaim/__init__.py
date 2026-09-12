@@ -21,8 +21,8 @@ class TangRedPacketClaim(_PluginBase):
     plugin_name = "不可躺自动抢红包插件"
     plugin_desc = "自动在不可躺站点抢当前红包列表的所有红包，支持定时和立即执行。"
     plugin_icon = "Moviepilot_A.png"
-    plugin_version = "3.0.0"
-    plugin_author = "https://github.com/jiongjiongJOJO"
+    plugin_version = "0.0.1"
+    plugin_author = "jiongjiongJOJO"
     author_url = "https://github.com/jiongjiongJOJO"
     plugin_config_prefix = "tangredpacketclaim_"
     plugin_order = 30
@@ -159,8 +159,10 @@ class TangRedPacketClaim(_PluginBase):
             self._lock.release()
 
     def _claim_all(self, cookie: str) -> dict[str, Any]:
-        """按列表为空、领取失败或每日上限停止多轮抢红包。"""
+        """按列表为空、领取失败或每日上限停止多轮抢红包，并累计本轮魔力值。"""
         claimed = 0
+        magic_total = 0
+        user_bonus_after: Any = None
         seen: set[str] = set()
         request = RequestUtils(cookies=self._cookie_to_dict(cookie), headers={
             "accept": "application/json, text/javascript, */*; q=0.01",
@@ -178,7 +180,10 @@ class TangRedPacketClaim(_PluginBase):
                 f"{total_packet_count if total_packet_count is not None else '未知'}"
             )
             if not items:
-                return {"status": "completed", "message": f"任务完成，共成功领取 {claimed} 个红包"}
+                return self._build_result(
+                    "completed", f"任务完成，共成功领取 {claimed} 个红包",
+                    claimed, magic_total, user_bonus_after,
+                )
             for packet in items:
                 packet_id = str(packet.get("id") or "")
                 if not packet_id or packet_id in seen or packet.get("remain_count", 0) <= 0:
@@ -193,12 +198,52 @@ class TangRedPacketClaim(_PluginBase):
                 if not isinstance(result, dict) or result.get("ok") is not True:
                     message = str((result or {}).get("message") or "领取失败")
                     if "每天最多领" in message or "已经领取" in message and "最多" in message:
-                        return {"status": "limit_reached", "message": message + f"，已成功领取 {claimed} 个"}
+                        return self._build_result(
+                            "limit_reached", message, claimed, magic_total, user_bonus_after,
+                        )
                     logger.warning(f"红包 {packet_id} 领取失败：{message}")
                     continue
                 claimed += 1
+                magic_amount = self._safe_int(result.get("magic_amount"))
+                magic_total += magic_amount
+                user_bonus_after = result.get("user_bonus_after", user_bonus_after)
+                logger.info(
+                    f"红包 {packet_id} 领取成功：本次获得 {magic_amount} 魔力值，"
+                    f"领取后魔力值 {user_bonus_after if user_bonus_after is not None else '未知'}"
+                )
                 time.sleep(self.CLAIM_DELAY_SECONDS)
-        return {"status": "completed", "message": f"达到刷新轮数上限，共成功领取 {claimed} 个红包"}
+        return self._build_result(
+            "completed", "达到刷新轮数上限", claimed, magic_total, user_bonus_after,
+        )
+
+    @staticmethod
+    def _build_result(
+        status: str,
+        message: str,
+        claimed: int,
+        magic_total: int,
+        user_bonus_after: Any,
+    ) -> dict[str, Any]:
+        """构造任务结果，统一输出红包数量、总魔力值和领取后余额。"""
+        balance = user_bonus_after if user_bonus_after is not None else "未知"
+        return {
+            "status": status,
+            "message": (
+                f"{message}，本轮获得魔力值 {magic_total}，"
+                f"领取后魔力值 {balance}"
+            ),
+            "claimed": claimed,
+            "magic_total": magic_total,
+            "user_bonus_after": user_bonus_after,
+        }
+
+    @staticmethod
+    def _safe_int(value: Any) -> int:
+        """将接口中的魔力数值安全转换为整数。"""
+        try:
+            return int(value or 0)
+        except (TypeError, ValueError):
+            return 0
 
     @staticmethod
     def _cookie_to_dict(cookie: str) -> dict[str, str]:
@@ -214,9 +259,13 @@ class TangRedPacketClaim(_PluginBase):
     @classmethod
     def _get_site_cookie(cls) -> str:
         """读取不可躺站点管理记录，不把 Cookie 写入插件配置。"""
-        try:
-            site = SiteOper().get_by_domain(cls.SITE_DOMAIN)
-            return str(getattr(site, "cookie", "") or "")
-        except Exception as error:
-            logger.error(f"读取不可躺站点 Cookie 失败：{error}")
-            return ""
+        # 站点管理可能保存为完整域名，也可能保存为根域名，两种都兼容。
+        for domain in (cls.SITE_DOMAIN, "tangpt.top"):
+            try:
+                site = SiteOper().get_by_domain(domain)
+                cookie = str(getattr(site, "cookie", "") or "").strip() if site else ""
+                if cookie:
+                    return cookie
+            except Exception as error:
+                logger.debug(f"读取不可躺站点 Cookie 失败：domain={domain}，错误={error}")
+        return ""

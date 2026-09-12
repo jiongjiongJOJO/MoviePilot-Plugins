@@ -61,6 +61,16 @@ def test_cookie_to_dict() -> None:
     }
 
 
+def test_get_site_cookie_supports_root_domain_and_missing_site() -> None:
+    """站点保存为根域名时也应读取成功，空对象不能触发属性异常。"""
+    site_oper = sys.modules["app.db.oper.site"].SiteOper
+    site_oper.return_value.get_by_domain.side_effect = [None, SimpleNamespace(cookie=" c_secure_pass=token ")]
+
+    assert TangRedPacketClaim._get_site_cookie() == "c_secure_pass=token"
+    assert site_oper.return_value.get_by_domain.call_args_list[0].args == ("www.tangpt.top",)
+    assert site_oper.return_value.get_by_domain.call_args_list[1].args == ("tangpt.top",)
+
+
 def test_claim_all_refreshes_until_list_is_empty() -> None:
     plugin = make_plugin()
     request = MagicMock()
@@ -70,7 +80,10 @@ def test_claim_all_refreshes_until_list_is_empty() -> None:
         {"ok": True, "items": [], "total_packet_count": 2},
     ]
     response = MagicMock()
-    response.json.return_value = {"ok": True}
+    response.json.side_effect = [
+        {"ok": True, "magic_amount": 44, "user_bonus_after": 125088087},
+        {"ok": True, "magic_amount": 56, "user_bonus_after": 125088143},
+    ]
     request.post_res.return_value = response
 
     with patch("app.plugins.tangredpacketclaim.RequestUtils", return_value=request), patch(
@@ -80,6 +93,10 @@ def test_claim_all_refreshes_until_list_is_empty() -> None:
 
     assert result["status"] == "completed"
     assert "2" in result["message"]
+    assert result["magic_total"] == 100
+    assert result["user_bonus_after"] == 125088143
+    assert "本轮获得魔力值 100" in result["message"]
+    assert "领取后魔力值 125088143" in result["message"]
     assert request.get_json.call_count == 3
     assert request.post_res.call_count == 2
 
@@ -96,3 +113,4 @@ def test_claim_all_stops_at_daily_limit() -> None:
         result = plugin._claim_all("c_secure_pass=token")
 
     assert result["status"] == "limit_reached"
+    assert result["magic_total"] == 0
