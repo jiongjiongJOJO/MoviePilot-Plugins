@@ -6,6 +6,7 @@
     "version": "0.0.1",
     "icon": "tangredpacketclaim.png",
     "author": "jiongjiongJOJO",
+    "author_url": "https://github.com/jiongjiongJOJO",
     "level": 1,
     "release": true,
     "system_version": ">=3.0.0",
